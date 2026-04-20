@@ -47,3 +47,16 @@ def test_mock_client_forces_llm_fallback_to_heuristics_for_analysis():
     assert any(issue.get("type") == "Code Quality" for issue in result["issues"])
     # Ensure we logged the fallback path
     assert any("Falling back to heuristics" in entry.get("message", "") for entry in result["logs"])
+
+
+def test_mock_client_fixer_falls_back_on_comment_only_output():
+    agent = BugHoundAgent(client=MockClient())
+    code = "def f():\n    print('hi')\n    return True\n"
+    result = agent.run(code)
+
+    assert "MockClient: no rewrite available" not in result["fixed_code"]
+    assert any(
+        "falling back to heuristic fixer" in entry.get("message", "").lower()
+        for entry in result["logs"]
+    )
+    assert "logging.info(" in result["fixed_code"] or "import logging" in result["fixed_code"]

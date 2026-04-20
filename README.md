@@ -107,3 +107,7 @@ You should see tests covering:
 * Risk scoring and guardrails
 * Heuristic fallbacks when LLM output is invalid
 * End-to-end agent workflow shape
+
+## Summary
+
+BugHound is an agent that will analyze code, propose a fix and judge whether the suggested fix is safe enough to apply. Students will need to understand how the system separates heuristic checks from model-driven behavior and why fallback logic is important. Students are likely to struggle around handling unexpected LLM outputs and making sure the agent does not accept broken fixes. AI can be really helpful for understanding how the model will work and suggesting repairs, however, it can also mislead students when the output has the wrong syntax or gives the wrong functionality which means you need to ensure your prompts are detailed and explains enough context to give you the right outputs. To help guide students in this Tinker, students should understand the edge cases of this agent and what are some assumptions that the agent is making in the code.

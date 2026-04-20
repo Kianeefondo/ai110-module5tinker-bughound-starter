@@ -46,3 +46,20 @@ def test_missing_return_is_penalized():
     )
     assert risk["score"] < 100
     assert any("Return" in r or "return" in r for r in risk["reasons"])
+
+
+def test_expanded_fix_increases_risk():
+    original = "def f():\n    return 1\n"
+    fixed = (
+        "import logging\n\n"
+        "def f():\n"
+        "    logging.info('running')\n"
+        "    return 1\n"
+    )
+    risk = assess_risk(
+        original_code=original,
+        fixed_code=fixed,
+        issues=[{"type": "Code Quality", "severity": "Low", "msg": "minor"}],
+    )
+    assert any("expanded significantly" in r for r in risk["reasons"])
+    assert risk["score"] <= 90

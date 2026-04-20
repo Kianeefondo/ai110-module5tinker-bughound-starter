@@ -53,6 +53,10 @@ def assess_risk(
         score -= 20
         reasons.append("Fixed code is much shorter than original.")
 
+    if original_lines and len(fixed_lines) > len(original_lines) * 1.5:
+        score -= 10
+        reasons.append("Fixed code expanded significantly, increasing the risk of unintended changes.")
+
     if "return" in original_code and "return" not in fixed_code:
         score -= 30
         reasons.append("Return statements may have been removed.")

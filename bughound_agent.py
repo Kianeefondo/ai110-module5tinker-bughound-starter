@@ -118,6 +118,19 @@ class BugHoundAgent:
             self._log("ACT", "LLM returned empty output. Falling back to heuristic fixer.")
             return self._heuristic_fix(code_snippet, issues)
 
+        # IMPROVED: Validate Python syntax before accepting LLM output
+        is_valid, error_msg = self._validate_python_syntax(cleaned)
+        if not is_valid:
+            self._log("ACT", f"LLM output has syntax errors ({error_msg}). Falling back to heuristic fixer.")
+            return self._heuristic_fix(code_snippet, issues)
+
+        if self._is_code_comment_only(cleaned):
+            self._log(
+                "ACT",
+                "LLM output contained no executable code. Falling back to heuristic fixer.",
+            )
+            return self._heuristic_fix(code_snippet, issues)
+
         return cleaned
 
     # ----------------------------
@@ -167,6 +180,18 @@ class BugHoundAgent:
             fixed = fixed.replace("print(", "logging.info(")
 
         return fixed
+
+    def _validate_python_syntax(self, code: str) -> Tuple[bool, str]:
+        """Check if code is valid Python syntax.
+        Returns (is_valid, error_message).
+        """
+        try:
+            compile(code, "<string>", "exec")
+            return True, ""
+        except SyntaxError as e:
+            return False, f"SyntaxError at line {e.lineno}: {e.msg}"
+        except Exception as e:
+            return False, f"Error: {str(e)}"
 
     # ----------------------------
     # Parsing + utilities
@@ -225,6 +250,18 @@ class BugHoundAgent:
         if match:
             return match.group(1)
         return text
+
+    def _is_code_comment_only(self, code: str) -> bool:
+        stripped = code.strip()
+        if not stripped:
+            return True
+
+        non_comment_lines = [
+            line
+            for line in stripped.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        ]
+        return len(non_comment_lines) == 0
 
     def _can_call_llm(self) -> bool:
         return self.client is not None and hasattr(self.client, "complete")
