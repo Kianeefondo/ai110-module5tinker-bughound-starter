@@ -79,7 +79,7 @@ class BugHoundAgent:
         issues = self._parse_json_array_of_issues(raw)
 
         if issues is None:
-            self._log("ANALYZE", "LLM output was not parseable JSON. Falling back to heuristics.")
+            self._log("ANALYZE", "LLM output was invalid. Falling back to heuristics.")
             return self._heuristic_analyze(code_snippet)
 
         return issues
@@ -210,16 +210,30 @@ class BugHoundAgent:
 
         return None
 
-    def _normalize_issues(self, arr: List[Any]) -> List[Dict[str, str]]:
+    def _normalize_issues(self, arr: List[Any]) -> Optional[List[Dict[str, str]]]:
         issues: List[Dict[str, str]] = []
         for item in arr:
             if not isinstance(item, dict):
-                continue
+                return None
+
+            issue_type = item.get("type")
+            severity = item.get("severity")
+            msg = item.get("msg")
+            if (
+                not isinstance(issue_type, str)
+                or not issue_type.strip()
+                or not isinstance(severity, str)
+                or severity.lower() not in {"low", "medium", "high"}
+                or not isinstance(msg, str)
+                or not msg.strip()
+            ):
+                return None
+
             issues.append(
                 {
-                    "type": str(item.get("type", "Issue")),
-                    "severity": str(item.get("severity", "Unknown")),
-                    "msg": str(item.get("msg", "")).strip(),
+                    "type": issue_type.strip(),
+                    "severity": severity.capitalize(),
+                    "msg": msg.strip(),
                 }
             )
         return issues

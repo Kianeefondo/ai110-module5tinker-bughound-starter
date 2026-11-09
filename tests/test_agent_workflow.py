@@ -38,6 +38,17 @@ def test_offline_mode_proposes_logging_fix_for_print():
     assert "logging.info(" in fixed
 
 
+def test_offline_medium_severity_issue_does_not_auto_fix():
+    agent = BugHoundAgent(client=None)
+    code = "# TODO: finish this function\n\ndef f():\n    return 1\n"
+
+    result = agent.run(code)
+
+    assert result["risk"]["score"] == 80
+    assert result["risk"]["level"] == "low"
+    assert result["risk"]["should_autofix"] is False
+
+
 def test_mock_client_forces_llm_fallback_to_heuristics_for_analysis():
     # MockClient returns non-JSON for analyzer prompts, so agent should fall back.
     agent = BugHoundAgent(client=MockClient())
@@ -47,6 +58,26 @@ def test_mock_client_forces_llm_fallback_to_heuristics_for_analysis():
     assert any(issue.get("type") == "Code Quality" for issue in result["issues"])
     # Ensure we logged the fallback path
     assert any("Falling back to heuristics" in entry.get("message", "") for entry in result["logs"])
+
+
+def test_invalid_llm_severity_falls_back_to_heuristics():
+    class InvalidSeverityClient:
+        def complete(self, system_prompt, user_prompt):
+            return '[{"type":"Reliability","severity":"Critical","msg":"Bare except may hide errors."}]'
+
+    agent = BugHoundAgent(client=InvalidSeverityClient())
+    code = "def f():\n    try:\n        return 1\n    except:\n        return 0\n"
+
+    issues = agent.analyze(code)
+
+    assert issues == [
+        {
+            "type": "Reliability",
+            "severity": "High",
+            "msg": "Found a bare `except:`. Catch a specific exception or use `except Exception as e:`.",
+        }
+    ]
+    assert any("Falling back to heuristics" in entry["message"] for entry in agent.logs)
 
 
 def test_mock_client_fixer_falls_back_on_comment_only_output():
